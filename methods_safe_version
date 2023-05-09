@@ -1,0 +1,156 @@
+
+# from copy import deepcopy
+import math
+from tree_search import SearchDomain
+from common import Coordinates, Map
+
+class Ia(SearchDomain):
+    def __init__(self, cursor):
+        self.ops = None
+        self.cursor = cursor
+        self.xlist = []
+        self.letters = []
+    def actions(self): 
+        moves = [Coordinates(0,1), Coordinates(0,-1), Coordinates(1,0), Coordinates(-1,0)]
+        letters = self.get_letters(self.ops.grid)
+        self.letters = letters
+        actlist = []    # vai ser retornado com o conjunto de todas as coordenadas onde self se pode deslocar
+        xlist, ylist = self.get_all_coords(letters)
+        self.xlist = xlist
+        value =  []
+        grid_size = len(self.ops.grid)-1
+        # if self.line_open():
+        #     print("WOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO")
+        #     place = self.ops.piece_coordinates("A")
+        #     actlist.append(moves[2])
+        #     return [["A"] + actlist]
+        for i,piece in enumerate(letters):
+            place = xlist[i]#self.ops.piece_coordinates(piece) # deve receber uma lista de Coordinates onde a peça se encontra
+            if piece != "x":
+                if place[0].y == place[1].y:    # return True se a peça estiver na horizontal ou false se estiver na vertical ([4,3] [5,3])
+                    orientacao = True
+                else:
+                    orientacao = False
+                placeLength = len(place)
+                
+                if orientacao:
+                    boo = False
+                    boo_2 = False
+                    if place[0].x > 0:
+                        boo = True
+                        next_p = Coordinates(place[0].x-1,place[0].y)
+                        for c in ylist:
+                            if next_p == c:
+                                boo = False
+                    if place[placeLength-1].x < grid_size:
+                        boo_2 = True
+                        next_p = Coordinates(place[placeLength-1].x+1,place[placeLength-1].y)
+                        for c in ylist:
+                            if next_p == c:
+                                boo_2 = False
+                    if boo:
+                        actlist.append(moves[3])
+                    if boo_2:
+                        actlist.append(moves[2])
+                else:
+                    boo = False
+                    boo_2 = False
+                    if place[placeLength-1].y < grid_size:
+                        boo = True
+                        next_p = Coordinates(place[placeLength-1].x,place[placeLength-1].y+1)
+                        for c in ylist:
+                            if next_p == c:
+                                boo = False
+                    if place[0].y > 0:
+                        boo_2 = True
+                        next_p = Coordinates(place[0].x,place[0].y-1)
+                        for c in ylist:
+                            if next_p == c:
+                                boo_2 = False
+                    if boo:
+                        actlist.append(moves[0])
+                    if boo_2:
+                        actlist.append(moves[1])
+            value += [[piece] + actlist]
+            actlist = []
+        return value
+
+    def result(self,piece,action,state):
+        newstate = Map(state)
+        # newstate = deepcopy(self.ops)
+        newstate.move(piece, action)
+        str_grid = "0" + newstate.__repr__()
+        return str_grid
+
+    def cost(self, piece, prev_piece):
+        # if prev_piece != None and piece != prev_piece[0]:
+        #     return 1
+        return 0
+        index = self.letters.index(piece)
+        piece_coord = self.xlist[index] #self.ops.piece_coordinates(piece)
+        
+        if prev_piece == None:
+            return (int)(math.sqrt((self.cursor[0] - piece_coord[0].x)**2 + (self.cursor[1] - piece_coord[0].y)**2))
+        # prev_coord = self.ops.piece_coordinates(prev_piece[0])
+        index = self.letters.index(prev_piece[0])
+        prev_coord = self.xlist[index]
+        return (int)(math.sqrt((prev_coord[0].x - piece_coord[0].x)**2 + (prev_coord[0].y - piece_coord[0].y)**2))
+
+    def heuristic(self, nova_grid,action): 
+        # car_coord = self.ops.piece_coordinates("A")
+        index = self.letters.index("A")
+        car_coord = self.xlist[index]
+        i = 0
+        j = 0
+        index = self.letters.index(action[0])
+        # print(self.xlist[index])
+        for coord in self.xlist[index]:
+            Coordinates(coord.x + action[1].x, coord.y + action[1].y)
+        # self.xlist[index] = Coordinates(self.xlist[index].x + action[1].x, self.xlist[index].y + action[1].y)
+        grid_size = len(self.ops.grid)-1
+        for k in self.xlist:
+            while j < len(k):
+                if k[j].y == car_coord[1].y and k[j].x > car_coord[1].x:
+                    i += 1
+                j += 1
+            j = 0
+        # xheu, yheu = self.get_all_coords(self.get_letters(nova_grid))
+        # for c in yheu:
+        #     if c.y == car_coord[1].y and c.x > car_coord[1].x:
+        #         i += 1
+        k = grid_size - car_coord[1].x 
+        i = i + k
+        return i
+
+    def satisfies(self, grid):
+        self.ops = Map(grid)
+        return self.ops.test_win()
+
+    # def line_open(self):
+    #     xlist = self.get_all_coords(self.get_letters(self.ops.grid))
+    #     coord = self.ops.piece_coordinates("A")[1]
+    #     for x in xlist:
+    #         if x.y == coord.y and x.x > coord.x:
+    #             return False
+    #     return True
+
+
+    def get_all_coords(self,letters):
+        xlist = []
+        ylist = []
+        for i in letters:
+            coord = self.ops.piece_coordinates(i)
+            xlist += [coord]
+            ylist += coord
+        return xlist, ylist
+
+    def get_letters(self, grid):
+        letras = ["A"]
+
+        for line in grid:
+            for letter in line:
+                if letter == "o":
+                    continue
+                if letter not in letras:
+                    letras = letras + [letter]
+        return letras
